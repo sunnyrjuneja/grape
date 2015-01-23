@@ -62,12 +62,19 @@ module Grape
         error_response(message: e.message, backtrace: e.backtrace)
       end
 
-      def error_response(error = {})
-        status = error[:status] || options[:default_status]
-        message = error[:message] || options[:default_message]
-        headers = { 'Content-Type' => content_type }
+      def error_response(error = {}, status = nil, headers = {})
+        status ||= (error[:status] || options[:default_status])
+        headers = { 'Content-Type' => content_type }.merge(headers)
         headers.merge!(error[:headers]) if error[:headers].is_a?(Hash)
         backtrace = error[:backtrace] || []
+        error = error.except(:backtrace, :status, :headers) if error.is_a?(Hash)
+        if error.is_a?(Grape::Exceptions::Base)
+          message = error[:message]
+        elsif error.is_a?(Hash) && error.count == 0
+          message = options[:default_message]
+        else
+          message = error
+        end
         rack_response(format_message(message, backtrace), status, headers)
       end
 
